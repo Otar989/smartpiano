@@ -505,15 +505,21 @@
   }
 
   function bindPianoEvents(){
+    const activePtrs = new Map();
     function onDown(e){
       const t = e.target.closest('.key'); if(!t) return;
       if(!Audio.ctx || Audio.ctx.state!=='running'){ showGate(); return; }
       const m = +t.dataset.midi; keyDown(m);
+      activePtrs.set(e.pointerId, m);
       e.preventDefault();
     }
-    function onUp(e){ const t = e.target.closest('.key'); if(!t) return; const m = +t.dataset.midi; keyUp(m); }
+    function onUp(e){
+      const m = activePtrs.get(e.pointerId);
+      if(m!==undefined){ keyUp(m); activePtrs.delete(e.pointerId); }
+    }
     whiteKeysEl.addEventListener('pointerdown', onDown); blackKeysEl.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointerup', ()=>{ /* on release anywhere, stop non-sustained active notes pressed via pointer */ });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
 
     // Allow clicking for short ping
     whiteKeysEl.addEventListener('pointerup', onUp); blackKeysEl.addEventListener('pointerup', onUp);
