@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Music Theory Trainer</title>
+<style>
+  :root{
+    --bg: #0b0f14;
+    --panel: #111826;
+    --panel-2:#0e1522;
+    --brand-1:#6ee7ff;
+    --brand-2:#a78bfa;
+    --brand-3:#22d3ee;
+    --text:#e6f0ff;
+    --text-dim:#a9bbd6;
+    --ok:#16a34a;
+    --bad:#f43f5e;
+    --warn:#f59e0b;
+    --white-key:#fefefe;
+    --black-key:#111;
+    --white-key-press:#b3e5fc;
+    --black-key-press:#66c1ff;
+    --hl:#34d399;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;}
+  body{
+    margin:0; font: 500 16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    color:var(--text);
+    background: radial-gradient(1200px 600px at 80% -10%, rgba(103,232,249,.15), transparent 60%),
+               radial-gradient(1000px 600px at -10% 0%, rgba(167,139,250,.15), transparent 60%),
+               linear-gradient(180deg, #0b0f14 0%, #0e1320 100%);
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+  header{
+    position:sticky; top:0; z-index:10;
+    background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+    color:#061420;
+    padding:14px 18px; box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  header .title{display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.5px}
+  .note-logo{width:34px; height:34px; border-radius:12px; background: conic-gradient(from 200deg at 50% 50%, var(--brand-2), var(--brand-1), var(--brand-3)); display:grid; place-items:center; box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .note-logo svg{filter:drop-shadow(0 2px 0 rgba(0,0,0,.2))}
+
+  main{max-width:1200px; margin:18px auto; padding:0 16px}
+
+  /* Tabs */
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+  .tab{cursor:pointer; border:1px solid rgba(255,255,255,.09); padding:10px 14px; border-radius:14px; background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03)); color:var(--text); transition:.2s; user-select:none}
+  .tab[aria-selected="true"]{background:linear-gradient(180deg,rgba(110,231,255,.25),rgba(167,139,250,.2)); color:#061420; border-color:transparent; box-shadow:0 10px 30px rgba(118,195,255,.2)}
+
+  .panel{display:none; background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.25)}
+  .panel.active{display:block}
+
+  .row{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch}
+  .col{flex:1 1 360px; min-width:260px}
+  .card{background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:12px}
+  .card h3{margin:6px 0 10px; font-size:18px}
+  .muted{color:var(--text-dim)}
+  .controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .controls label{font-size:14px; color:var(--text-dim)}
+  .select, .button, input[type=range]{appearance:none; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03)); color:var(--text); padding:10px 12px; font:inherit}
+  .button{cursor:pointer; transition:.15s; user-select:none}
+  .button:hover{transform:translateY(-1px)}
+  .button.primary{background:linear-gradient(180deg, rgba(110,231,255,.35), rgba(167,139,250,.28)); color:#04101e; border-color:transparent}
+  .button.ghost{background:transparent}
+  .button.good{background:linear-gradient(180deg, rgba(34,197,94,.3), rgba(16,185,129,.25)); color:#041914; border-color:transparent}
+  .button.bad{background:linear-gradient(180deg, rgba(244,63,94,.28), rgba(244,63,94,.2)); color:#19040a; border-color:transparent}
+
+  /* Piano */
+  .piano-wrap{position:relative; padding:10px; border-radius:16px; background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.06)}
+  .piano{position:relative; height:calc(var(--vh, 1vh) * 36); min-height:180px; user-select:none}
+  .white-keys{position:absolute; inset:0; display:flex; gap:2px; padding:0 6px}
+  .key.white{flex:1; background:linear-gradient(180deg, #fff, #eaeaea 40%, #ddd 100%); border-radius:0 0 10px 10px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), inset 0 1px 0 #fff; border:1px solid #c8c8c8; position:relative}
+  .key.white.pressed{background:linear-gradient(180deg, #d2f2ff, #c2e7ff 40%, #bde0ff 100%); box-shadow: inset 0 -2px 0 rgba(0,0,0,.25), 0 0 0 2px rgba(99,179,237,.35)}
+  .key.white.highlight{outline:3px solid var(--hl); outline-offset:-3px}
+  .label{position:absolute; bottom:6px; left:0; right:0; text-align:center; font-size:12px; color:#333}
+  .black-keys{position:absolute; inset:0; pointer-events:none}
+  .key.black{position:absolute; width:3.9%; height:60%; background:linear-gradient(180deg, #333, #111); border-radius:0 0 8px 8px; box-shadow: inset 0 -6px 0 rgba(0,0,0,.6), 0 4px 10px rgba(0,0,0,.4); border:1px solid #000; transform:translateX(-50%); pointer-events:auto}
+  .key.black.pressed{background:linear-gradient(180deg, #405a6e, #1f2a35); box-shadow: inset 0 -3px 0 rgba(0,0,0,.6), 0 0 0 2px rgba(99,179,237,.35)}
+  .key.black.highlight{outline:3px solid var(--hl); outline-offset:-3px}
+
+  /* Ear training */
+  .quiz{display:grid; gap:10px}
+  .answers{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px}
+  .msg{min-height:24px}
+  .score{font-weight:700}
+  .badge{display:inline-block; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.08); font-size:12px}
+  .flash{animation:flash .4s ease}
+  @keyframes flash{from{transform:scale(1)} 50%{transform:scale(1.035)} to{transform:scale(1)}}
+  .shake{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+  /* Footer tip */
+  footer{opacity:.8; color:var(--text-dim); text-align:center; padding:24px 0}
+
+  /* Audio gate banner */
+  .gate{position:fixed; inset:0; background:rgba(0,0,0,.75); display:none; place-items:center; z-index:50}
+  .gate.active{display:grid}
+  .gate .modal{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:18px; max-width:440px; text-align:center}
+
+  /* Utility */
+  .grid{display:grid; gap:10px}
+  .mt8{margin-top:8px}
+  .mt12{margin-top:12px}
+
+  /* Liquid Glass style & Mobile adaptations */
+  .glass{background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18); box-shadow:0 20px 50px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25); backdrop-filter:saturate(140%) blur(18px); -webkit-backdrop-filter:saturate(140%) blur(18px);}
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){ .glass{background:rgba(255,255,255,.12);} }
+
+  header{ padding: max(14px, calc(14px + env(safe-area-inset-top))); }
+  header{ background:linear-gradient(90deg, rgba(110,231,255,.6), rgba(167,139,250,.55)); }
+  header{ backdrop-filter:saturate(140%) blur(16px); -webkit-backdrop-filter:saturate(140%) blur(16px); border-bottom:1px solid rgba(255,255,255,.25); }
+
+  .panel{ border-radius:18px; }
+  .card{ border-radius:18px; }
+  .piano-wrap, .card, .panel{ background:rgba(255,255,255,.06); backdrop-filter:saturate(140%) blur(18px); -webkit-backdrop-filter:saturate(140%) blur(18px); }
+
+  .tab{ background:rgba(255,255,255,.08); backdrop-filter:saturate(140%) blur(12px); -webkit-backdrop-filter:saturate(140%) blur(12px); }
+  .tab[aria-selected="true"]{ background:linear-gradient(180deg, rgba(110,231,255,.35), rgba(167,139,250,.28)); }
+
+  /* Mobile-first tweaks */
+  @media (max-width: 900px){
+    main{padding:0 10px}
+    .tabs{overflow:auto; white-space:nowrap; padding-bottom:6px; margin-bottom:10px}
+    .tab{padding:10px 12px; font-size:14px}
+    .row{gap:12px}
+    .col{flex:1 1 100%; min-width:0}
+    .controls{gap:8px}
+    .select, .button, input[type=range]{padding:10px 10px; font-size:15px}
+    .piano{height:calc(var(--vh, 1vh) * 34); min-height:160px}
+    .label{font-size:10px}
+    header .title{gap:10px}
+  }
+
+  /* Better touch targets */
+  .button{min-height:40px}
+  .answers .button{min-height:44px}
+
+  /* Safe-area padding for iOS */
+  body{ padding-bottom: env(safe-area-inset-bottom); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <div class="note-logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 3v11.5a3.5 3.5 0 1 1-2-3.162V6l10-2v8.5a3.5 3.5 0 1 1-2-3.162V3L9 5V3z" fill="#061420"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:20px; font-weight:900; line-height:1">Music Theory Trainer</div>
+        <div style="font-size:12px; opacity:.75">Learn notes, scales, chords — and train your ear 🎵</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" aria-selected="true" data-tab="piano">🎹 Piano</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="ear">👂 Ear Training</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="scales">📈 Scales</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="chords">🎶 Chords</button>
+    </nav>
+
+    <!-- Piano Panel -->
+    <section class="panel active" id="panel-piano" role="tabpanel" aria-labelledby="tab-piano">
+      <div class="row">
+        <div class="col">
+          <div class="piano-wrap">
+            <div class="piano" id="piano">
+              <div class="white-keys" id="whiteKeys"></div>
+              <div class="black-keys" id="blackKeys"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card grid">
+            <h3>Sound</h3>
+            <div class="controls">
+              <label for="wave">Wave</label>
+              <select id="wave" class="select">
+                <option>sine</option>
+                <option>triangle</option>
+                <option selected>square</option>
+                <option>sawtooth</option>
+              </select>
+              <label for="attack">Attack</label>
+              <input type="range" id="attack" min="0" max="0.2" step="0.005" value="0.01" />
+              <label for="release">Release</label>
+              <input type="range" id="release" min="0.05" max="1.5" step="0.05" value="0.5" />
+            </div>
+            <div class="controls">
+              <label for="volume">Volume</label>
+              <input type="range" id="volume" min="0" max="1" step="0.01" value="0.6" />
+              <label><input type="checkbox" id="sustain"/> Sustain</label>
+              <button class="button" id="panic">🔇 Panic</button>
+            </div>
+            <div class="muted">Tip: tap keys or use your mouse. Works on touch too.</div>
+          </div>
+
+          <div class="card">
+            <h3>Highlights</h3>
+            <div class="controls">
+              <button class="button ghost" id="clearHighlights">Clear</button>
+              <span class="badge" id="highlightInfo">None</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ear Training Panel -->
+    <section class="panel" id="panel-ear" role="tabpanel" aria-labelledby="tab-ear">
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <h3>Note Trainer</h3>
+            <div class="quiz" id="noteQuiz">
+              <div class="controls">
+                <button class="button primary" data-action="play">▶️ Play</button>
+                <button class="button" data-action="repeat">🔁 Again</button>
+                <button class="button" data-action="new">🎲 New</button>
+              </div>
+              <div class="answers"></div>
+              <div class="msg"></div>
+              <div class="muted">Identify the note (C3–B5). Answers use sharps.</div>
+              <div class="mt8"><span class="badge score">0 / 0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <h3>Interval Trainer</h3>
+            <div class="quiz" id="intervalQuiz">
+              <div class="controls">
+                <button class="button primary" data-action="play">▶️ Play</button>
+                <button class="button" data-action="repeat">🔁 Again</button>
+                <button class="button" data-action="new">🎲 New</button>
+              </div>
+              <div class="answers"></div>
+              <div class="msg"></div>
+              <div class="muted">Name the interval (ascending).</div>
+              <div class="mt8"><span class="badge score">0 / 0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt12">
+        <div class="col">
+          <div class="card">
+            <h3>Chord Quality Trainer</h3>
+            <div class="quiz" id="chordQuiz">
+              <div class="controls">
+                <button class="button primary" data-action="play">▶️ Play</button>
+                <button class="button" data-action="repeat">🔁 Again</button>
+                <button class="button" data-action="new">🎲 New</button>
+              </div>
+              <div class="answers"></div>
+              <div class="msg"></div>
+              <div class="muted">Triads as block chords.</div>
+              <div class="mt8"><span class="badge score">0 / 0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scales Panel -->
+    <section class="panel" id="panel-scales" role="tabpanel" aria-labelledby="tab-scales">
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <h3>Choose a Scale</h3>
+            <div class="controls">
+              <label for="scaleRoot">Root</label>
+              <select id="scaleRoot" class="select"></select>
+              <label for="scaleType">Type</label>
+              <select id="scaleType" class="select"></select>
+              <button class="button" id="scaleHighlight">Highlight</button>
+              <button class="button primary" id="scalePlay">▶️ Play</button>
+            </div>
+            <div class="muted" id="scaleInfo">—</div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="card">
+            <h3>Preset Scales</h3>
+            <div class="controls">
+              <button class="button" data-scale="C major">C Major</button>
+              <button class="button" data-scale="A minor">A Minor</button>
+              <button class="button" data-scale="E minor pentatonic">E Minor Pentatonic</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chords Panel -->
+    <section class="panel" id="panel-chords" role="tabpanel" aria-labelledby="tab-chords">
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <h3>Build a Chord</h3>
+            <div class="controls">
+              <label for="chordRoot">Root</label>
+              <select id="chordRoot" class="select"></select>
+              <label for="chordType">Type</label>
+              <select id="chordType" class="select"></select>
+            </div>
+            <div class="controls mt8">
+              <button class="button" id="chordHighlight">Highlight</button>
+              <button class="button primary" id="chordPlay">▶️ Block</button>
+              <button class="button" id="chordArp">🔔 Arpeggiate</button>
+            </div>
+            <div class="muted" id="chordInfo">—</div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="card">
+            <h3>Common Triads</h3>
+            <div class="controls">
+              <button class="button" data-chord="C major">C</button>
+              <button class="button" data-chord="G major">G</button>
+              <button class="button" data-chord="F major">F</button>
+              <button class="button" data-chord="Am minor">Am</button>
+              <button class="button" data-chord="Em minor">Em</button>
+              <button class="button" data-chord="Dm minor">Dm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Built with Web Audio API · Tap anywhere to enable sound if needed.
+    </footer>
+  </main>
+
+  <div class="gate" id="audioGate" aria-hidden="true">
+    <div class="modal">
+      <h3>Enable Sound</h3>
+      <p class="muted">Tap the button below to allow audio playback.</p>
+      <button class="button primary" id="enableAudio">Let's play 🎶</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // --- Audio Engine ---------------------------------------------------------
+  const Audio = {
+    ctx: null,
+    masterGain: null,
+    sustain: false,
+    wave: 'square',
+    attack: 0.01,
+    release: 0.5,
+    active: new Map(), // midi -> {osc, gain}
+    ensure(){
+      if(this.ctx) return true;
+      try{
+        this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = parseFloat(document.getElementById('volume').value || '0.6');
+        this.masterGain.connect(this.ctx.destination);
+        return true;
+      }catch(e){ return false; }
+    },
+    setVolume(v){ if(this.masterGain) this.masterGain.gain.value = v; },
+    startNote(midi){
+      if(!this.ensure()) return;
+      const freq = midiToFreq(midi);
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = this.wave;
+      osc.frequency.value = freq;
+      const now = this.ctx.currentTime;
+      const a = this.attack;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.9, now + a);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start();
+      this.active.set(midi, {osc, gain});
+    },
+    stopNote(midi){
+      const item = this.active.get(midi);
+      if(!item) return;
+      const {osc, gain} = item;
+      const now = this.ctx.currentTime;
+      const r = this.release;
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setTargetAtTime(0, now, r/3);
+      osc.stop(now + r);
+      this.active.delete(midi);
+    },
+    stopAll(){
+      for(const m of Array.from(this.active.keys())) this.stopNote(m);
+    },
+    playOnce(midi, dur=0.6){
+      this.startNote(midi);
+      setTimeout(() => this.stopNote(midi), dur*1000);
+    },
+    playChord(midis, hold=0.8){ midis.forEach(m=>this.startNote(m)); setTimeout(()=>midis.forEach(m=>this.stopNote(m)), hold*1000); },
+    arp(midis, gap=0.12){ let t=0; midis.forEach(m=>{ setTimeout(()=>this.playOnce(m, 0.6), t*1000); t+=gap; }); }
+  };
+
+  // --- Music Theory helpers -------------------------------------------------
+  const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  function midiToFreq(m){ return 440 * Math.pow(2,(m-69)/12); }
+  function nameToMidi(name){ // e.g., C#4
+    const m = name.match(/^([A-G])(#|b)?(\\d)$/);
+    if(!m) return null;
+    let [_,L,acc,oct] = m; oct = +oct;
+    let idx = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[L];
+    if(acc==='#') idx++; else if(acc==='b') idx--;
+    return 12*(oct+1)+idx; // MIDI number
+  }
+  function midiToName(m){ const n = m%12; const o = Math.floor(m/12)-1; return `${NOTES[n]}${o}`; }
+  function addSemis(midi, semis){ return midi+semis; }
+
+  // Build scales
+  const SCALE_TYPES = {
+    'major': [2,2,1,2,2,2,1],
+    'natural minor': [2,1,2,2,1,2,2],
+    'harmonic minor':[2,1,2,2,1,3,1],
+    'melodic minor (asc)': [2,1,2,2,2,2,1],
+    'pentatonic major': [2,2,3,2,3],
+    'pentatonic minor': [3,2,2,3,2]
+  };
+  function buildScale(rootMidi, type){
+    const steps = SCALE_TYPES[type];
+    const out=[rootMidi]; let m = rootMidi;
+    for(const s of steps){ m+=s; out.push(m); }
+    return out; // octave included at end for 7-step scales
+  }
+
+  // Chord recipes (triads + 7ths + sus)
+  const CHORD_TYPES = {
+    'major'    : [0,4,7],
+    'minor'    : [0,3,7],
+    'diminished':[0,3,6],
+    'augmented':[0,4,8],
+    'sus2'     : [0,2,7],
+    'sus4'     : [0,5,7],
+    'dom7'     : [0,4,7,10],
+    'maj7'     : [0,4,7,11],
+    'min7'     : [0,3,7,10]
+  };
+  function buildChord(rootMidi, type){ return CHORD_TYPES[type].map(s=>rootMidi+s); }
+
+  // --- Piano UI -------------------------------------------------------------
+  const whiteKeysEl = document.getElementById('whiteKeys');
+  const blackKeysEl = document.getElementById('blackKeys');
+  const PIANO = { startMidi: 48, whiteCount: 14 }; // C3 … C5 (14 white keys ≈ two octaves)
+
+  function isBlack(midi){ return [1,3,6,8,10].includes(midi%12); }
+  function createPiano(){
+    whiteKeysEl.innerHTML=''; blackKeysEl.innerHTML='';
+    const whiteOrder = [];
+    // build across midi range, but render whites in flex row; blacks positioned absolutely
+    let m = PIANO.startMidi; let whites=0;
+    while(whites < PIANO.whiteCount){
+      if(!isBlack(m)){
+        const key = document.createElement('div'); key.className='key white'; key.dataset.midi=m; key.dataset.name=midiToName(m);
+        key.innerHTML = `<div class="label">${midiToName(m)}</div>`;
+        whiteKeysEl.appendChild(key); whiteOrder.push(m); whites++;
+      }
+      m++;
+    }
+    // Now place black keys over the gaps
+    const totalWhites = whiteOrder.length;
+    const gapPct = 100/totalWhites; // width per white key, percentage
+    for(let i=0;i<totalWhites;i++){
+      const midiWhite = whiteOrder[i];
+      const next = midiWhite+1; // potential black
+      if(isBlack(next)){
+        const black = document.createElement('div'); black.className='key black'; black.dataset.midi=next; black.dataset.name=midiToName(next);
+        const centerPct = (i+1)*gapPct - gapPct*0.5; // center over gap
+        black.style.left = `calc(${centerPct}% + ${gapPct*0.12}%)`; // slight right bias looks natural
+        blackKeysEl.appendChild(black);
+      }
+    }
+  }
+
+  function keyDown(midi){
+    // highlight
+    const el = document.querySelector(`.key[data-midi="${midi}"]`);
+    if(el) el.classList.add('pressed');
+    Audio.startNote(midi);
+  }
+  function keyUp(midi){
+    if(!Audio.sustain) Audio.stopNote(midi);
+    const el = document.querySelector(`.key[data-midi="${midi}"]`);
+    if(el) el.classList.remove('pressed');
+  }
+
+  function bindPianoEvents(){
+    function onDown(e){
+      const t = e.target.closest('.key'); if(!t) return;
+      if(!Audio.ctx || Audio.ctx.state!=='running'){ showGate(); return; }
+      const m = +t.dataset.midi; keyDown(m);
+      e.preventDefault();
+    }
+    function onUp(e){ const t = e.target.closest('.key'); if(!t) return; const m = +t.dataset.midi; keyUp(m); }
+    whiteKeysEl.addEventListener('pointerdown', onDown); blackKeysEl.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', ()=>{ /* on release anywhere, stop non-sustained active notes pressed via pointer */ });
+
+    // Allow clicking for short ping
+    whiteKeysEl.addEventListener('pointerup', onUp); blackKeysEl.addEventListener('pointerup', onUp);
+  }
+
+  function showGate(){ document.getElementById('audioGate').classList.add('active'); }
+  function hideGate(){ document.getElementById('audioGate').classList.remove('active'); }
+
+  // --- Tabbing --------------------------------------------------------------
+  const tabButtons = document.querySelectorAll('.tab');
+  const panels = {
+    piano: document.getElementById('panel-piano'),
+    ear: document.getElementById('panel-ear'),
+    scales: document.getElementById('panel-scales'),
+    chords: document.getElementById('panel-chords')
+  };
+  tabButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabButtons.forEach(b=>b.setAttribute('aria-selected','false'));
+      btn.setAttribute('aria-selected','true');
+      const id=btn.dataset.tab; Object.values(panels).forEach(p=>p.classList.remove('active'));
+      panels[id].classList.add('active');
+    });
+  });
+
+  // --- Controls -------------------------------------------------------------
+  document.getElementById('wave').addEventListener('change', e=>{ Audio.wave = e.target.value; });
+  document.getElementById('volume').addEventListener('input', e=>{ Audio.setVolume(parseFloat(e.target.value)); });
+  document.getElementById('attack').addEventListener('input', e=>{ Audio.attack=parseFloat(e.target.value); });
+  document.getElementById('release').addEventListener('input', e=>{ Audio.release=parseFloat(e.target.value); });
+  document.getElementById('sustain').addEventListener('change', e=>{ Audio.sustain=e.target.checked; });
+  document.getElementById('panic').addEventListener('click', ()=>{ Audio.stopAll(); });
+  document.getElementById('enableAudio').addEventListener('click', ()=>{ if(Audio.ensure()){ hideGate(); if(Audio.ctx.state==='suspended') Audio.ctx.resume(); } });
+
+  // --- Highlights -----------------------------------------------------------
+  const highlightInfo = document.getElementById('highlightInfo');
+  function clearHighlights(){ document.querySelectorAll('.key').forEach(k=>k.classList.remove('highlight')); highlightInfo.textContent='None'; }
+  document.getElementById('clearHighlights').addEventListener('click', clearHighlights);
+  function highlightMidis(midis, label){ clearHighlights(); midis.forEach(m=>{ const el = document.querySelector(`.key[data-midi="${m}"]`); if(el) el.classList.add('highlight'); }); highlightInfo.textContent=label; flash(highlightInfo); }
+
+  // --- Scales UI ------------------------------------------------------------
+  const rootSelect = document.getElementById('scaleRoot');
+  const typeSelect = document.getElementById('scaleType');
+  const scaleInfo = document.getElementById('scaleInfo');
+  const tonicNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  tonicNames.forEach(n=>{ const o=document.createElement('option'); o.textContent=n; rootSelect.appendChild(o); });
+  Object.keys(SCALE_TYPES).forEach(t=>{ const o=document.createElement('option'); o.textContent=t; typeSelect.appendChild(o); });
+  rootSelect.value='C'; typeSelect.value='major';
+
+  function currentScale(){
+    const rName = rootSelect.value + '4'; // use 4th octave for reference
+    const rMidi = nameToMidi(rName);
+    const t = typeSelect.value;
+    const midis = buildScale(rMidi, t);
+    return { midis, label: `${rootSelect.value} ${t}` };
+  }
+  function describeScale(type){
+    const steps = SCALE_TYPES[type];
+    return steps ? steps.map(s=>s===2?'W':s===1?'H':s).join('-') : '';
+  }
+  document.getElementById('scaleHighlight').addEventListener('click', ()=>{
+    const s = currentScale(); highlightMidis(wrapInRange(s.midis), s.label); scaleInfo.textContent = `${s.label} • Pattern: ${describeScale(typeSelect.value)}`; flash(scaleInfo);
+  });
+  document.getElementById('scalePlay').addEventListener('click', ()=>{
+    const s = currentScale(); const seq = wrapInRange(s.midis);
+    let t=0; seq.forEach(m=>{ setTimeout(()=>Audio.playOnce(m,0.5), t*200); t++; });
+  });
+  // Quick presets
+  document.querySelectorAll('#panel-scales [data-scale]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [root, ...rest] = btn.dataset.scale.split(' ');
+      const type = rest.join(' ');
+      rootSelect.value=root; typeSelect.value=type; document.getElementById('scaleHighlight').click();
+    });
+  });
+
+  // --- Chords UI ------------------------------------------------------------
+  const cRoot = document.getElementById('chordRoot');
+  const cType = document.getElementById('chordType');
+  const chordInfo = document.getElementById('chordInfo');
+  tonicNames.forEach(n=>{ const o=document.createElement('option'); o.textContent=n; cRoot.appendChild(o); });
+  Object.keys(CHORD_TYPES).forEach(t=>{ const o=document.createElement('option'); o.textContent=t; cType.appendChild(o); });
+  cRoot.value='C'; cType.value='major';
+
+  function currentChord(){ const rMidi = nameToMidi(cRoot.value+'4'); const type = cType.value; return { midis: buildChord(rMidi,type), label: `${cRoot.value} ${type}` } }
+  document.getElementById('chordHighlight').addEventListener('click', ()=>{ const ch=currentChord(); highlightMidis(wrapInRange(ch.midis), ch.label); chordInfo.textContent=`${ch.label} • Formula: ${CHORD_TYPES[cType.value].join(', ')}`; flash(chordInfo); });
+  document.getElementById('chordPlay').addEventListener('click', ()=>{ const ch=currentChord(); const notes= toPlayableRegister(ch.midis); Audio.playChord(notes); });
+  document.getElementById('chordArp').addEventListener('click', ()=>{ const ch=currentChord(); const notes= toPlayableRegister(ch.midis); Audio.arp(notes, 0.16); });
+
+  // Quick triads
+  document.querySelectorAll('#panel-chords [data-chord]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [root, ...rest] = btn.dataset.chord.split(' ');
+      const type = rest.join(' ') || 'major';
+      cRoot.value = root.replace(/m$/,'');
+      cType.value = btn.dataset.chord.includes('minor')||/m$/.test(root)?'minor':'major';
+      document.getElementById('chordHighlight').click();
+    });
+  });
+
+  // --- Ear Training ---------------------------------------------------------
+  const noteQuiz = makeQuiz('noteQuiz', {
+    options: (()=>{ const arr=[]; for(let o=3;o<=5;o++){ for(let i=0;i<12;i++){ arr.push(NOTES[i]+o); } } return arr; })(),
+    newQuestion(){
+      const pool = this.options; const ans = pool[Math.floor(Math.random()*pool.length)];
+      this.answer = ans; // e.g., C#4
+      this.midi = nameToMidi(ans);
+      this.prompt = `Which note is this?`;
+      this.choices = pickChoices(this.options.map(x=>x.replace(/\\d$/,'')), ans.replace(/\\d$/,''), 6).map(n=>n+ans.slice(-1));
+    },
+    play(){ Audio.playOnce(this.midi, 0.7); }
+  });
+
+  const INTERVALS = [
+    ['m2',1],['M2',2],['m3',3],['M3',4],['P4',5],['TT',6],['P5',7],['m6',8],['M6',9],['m7',10],['M7',11],['P8',12]
+  ];
+  const intervalQuiz = makeQuiz('intervalQuiz', {
+    options: INTERVALS.map(x=>x[0]),
+    newQuestion(){
+      const root = randInt(nameToMidi('C3'), nameToMidi('B4'));
+      const iv = INTERVALS[Math.floor(Math.random()*INTERVALS.length)];
+      this.answer = iv[0]; this.semis = iv[1];
+      this.prompt = 'Identify the interval';
+      this.low = root; this.high = root + this.semis;
+      this.choices = pickChoices(this.options, this.answer, 6);
+    },
+    play(){ Audio.playOnce(this.low,0.55); setTimeout(()=>Audio.playOnce(this.high,0.7), 620); }
+  });
+
+  const CHORD_QUALITIES = ['major','minor','diminished','augmented','sus2','sus4'];
+  const chordQuiz = makeQuiz('chordQuiz', {
+    options: CHORD_QUALITIES,
+    newQuestion(){
+      const root = randInt(nameToMidi('C3'), nameToMidi('B4'));
+      const type = this.options[Math.floor(Math.random()*this.options.length)];
+      this.answer = type; this.root=root; this.prompt='What chord quality is this?';
+      this.choices = pickChoices(this.options, this.answer, 4);
+    },
+    play(){ const notes = buildChord(this.root,this.answer); Audio.playChord(toPlayableRegister(notes), 0.9); }
+  });
+
+  function makeQuiz(id, impl){
+    const el = document.getElementById(id);
+    const answersEl = el.querySelector('.answers');
+    const msgEl = el.querySelector('.msg');
+    const scoreEl = el.querySelector('.score');
+    const api = { correct:0, total:0, ...impl };
+
+    function setMessage(txt, ok){ msgEl.textContent=txt; msgEl.className = 'msg ' + (ok===true?'flash': ok===false?'shake':''); }
+    function renderChoices(){ answersEl.innerHTML=''; api.choices.forEach(ch=>{ const b=document.createElement('button'); b.className='button'; b.textContent=ch; b.addEventListener('click', ()=>check(ch)); answersEl.appendChild(b); }); }
+
+    function newQ(){ api.newQuestion(); setMessage(api.prompt); renderChoices(); }
+    function play(){ if(!Audio.ctx || Audio.ctx.state!=='running'){ showGate(); return; } api.play(); }
+
+    function check(choice){ api.total++; if(choice===api.answer){ api.correct++; setMessage('✅ Correct!', true);} else { setMessage(`❌ It was ${api.answer}`, false);} updateScore(); }
+    function updateScore(){ scoreEl.textContent = `${api.correct} / ${api.total}`; }
+
+    el.querySelector('[data-action="play"]').addEventListener('click', play);
+    el.querySelector('[data-action="repeat"]').addEventListener('click', play);
+    el.querySelector('[data-action="new"]').addEventListener('click', ()=>{ newQ(); });
+
+    // seed first
+    newQ(); updateScore();
+    return api;
+  }
+
+  // --- Utilities ------------------------------------------------------------
+  function pickChoices(all, answer, n){
+    const set = new Set([answer]);
+    while(set.size<n){ set.add(all[Math.floor(Math.random()*all.length)]); }
+    const arr=[...set]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+    return arr;
+  }
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+  function wrapInRange(midis){
+    // Project a set of pitch classes onto the visible keyboard range
+    const min = PIANO.startMidi; const whites=PIANO.whiteCount; // find end midi (last white ~ B?)
+    // find last midi within built range
+    let max = min; let whitesSeen=0; let m=min; while(whitesSeen<whites){ if(!isBlack(m)) whitesSeen++; max=m; m++; }
+    // normalize to pitch classes
+    const pcs = new Set(midis.map(m=>m%12));
+    const out=[]; for(let k=min;k<=max;k++){ if(pcs.has(k%12)) out.push(k); }
+    return out;
+  }
+  function toPlayableRegister(midis){
+    // Move notes into mid C3–C5 window
+    const min=nameToMidi('C3'); const max=nameToMidi('C5');
+    return midis.map(m=>{ while(m<min) m+=12; while(m>max) m-=12; return m; });
+  }
+  function flash(el){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+
+  // --- Init -----------------------------------------------------------------
+  createPiano(); bindPianoEvents();
+  window.addEventListener('resize', ()=>{ createPiano(); });
+
+  // Accessibility hint: auto-show gate on first interaction in many cases
+  document.addEventListener('click', ()=>{ if(!Audio.ctx) showGate(); }, {once:true});
+})();
+
+// Mobile viewport height fix (iOS Safari)
+(function setVH(){ const set = ()=>{ document.documentElement.style.setProperty('--vh', (window.innerHeight*0.01)+'px'); }; set(); window.addEventListener('resize', set); window.addEventListener('orientationchange', set); })();
+
+// Add glass class to key containers after DOM paint
+requestAnimationFrame(()=>{
+  document.querySelectorAll('.piano-wrap, .card, .panel').forEach(el=>el.classList.add('glass'));
+});
+</script>
+</body>
+</html>
